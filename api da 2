@@ -1,0 +1,277 @@
+Vamos criar as APIs para o código que desenvolvemos no Exercício 2 (CRUD de Clientes com busca de endereço pelo CEP usando a API do ViaCEP). Abaixo, vou detalhar como criar cada endpoint da API e como testá-los.
+
+Passo 1: Estrutura da API
+
+A API terá os seguintes endpoints:
+
+GET /clientes - Listar todos os clientes.
+GET /clientes/:id - Listar um cliente específico pelo ID.
+POST /clientes - Criar um novo cliente.
+PUT /clientes/:id - Atualizar um cliente existente.
+DELETE /clientes/:id - Deletar um cliente.
+Passo 2: Código Completo da API
+
+Aqui está o código completo da API, já explicado anteriormente, mas organizado para facilitar a criação dos endpoints:
+
+javascript
+Copy
+const express = require('express');
+const { PrismaClient } = require('@prisma/client');
+const axios = require('axios');
+
+const prisma = new PrismaClient();
+const app = express();
+const port = 3000;
+
+app.use(express.json());
+
+// Função para buscar o endereço pelo CEP usando a API do ViaCEP
+async function buscarEnderecoPorCEP(cep) {
+  try {
+    const response = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
+    return response.data;
+  } catch (error) {
+    console.error('Erro ao buscar o CEP:', error);
+    return null;
+  }
+}
+
+// 1. Listar todos os clientes
+app.get('/clientes', async (req, res) => {
+  const clientes = await prisma.cliente.findMany();
+  res.json(clientes);
+});
+
+// 2. Listar um cliente específico por ID
+app.get('/clientes/:id', async (req, res) => {
+  const { id } = req.params;
+  const cliente = await prisma.cliente.findUnique({
+    where: { id: parseInt(id) },
+  });
+  if (!cliente) {
+    return res.status(404).json({ error: 'Cliente não encontrado' });
+  }
+  res.json(cliente);
+});
+
+// 3. Criar um novo cliente
+app.post('/clientes', async (req, res) => {
+  const { nome, cpf, telefone, cep, numero, complemento } = req.body;
+
+  // Busca o endereço pelo CEP
+  const endereco = await buscarEnderecoPorCEP(cep);
+  if (!endereco || endereco.erro) {
+    return res.status(400).json({ error: 'CEP inválido ou não encontrado' });
+  }
+
+  const novoCliente = await prisma.cliente.create({
+    data: {
+      nome,
+      cpf,
+      telefone,
+      cep,
+      numero,
+      complemento,
+      logradouro: endereco.logradouro,
+      bairro: endereco.bairro,
+      cidade: endereco.localidade,
+      estado: endereco.uf,
+    },
+  });
+  res.status(201).json(novoCliente);
+});
+
+// 4. Atualizar um cliente existente
+app.put('/clientes/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nome, cpf, telefone, cep, numero, complemento } = req.body;
+
+  // Busca o endereço pelo CEP
+  const endereco = await buscarEnderecoPorCEP(cep);
+  if (!endereco || endereco.erro) {
+    return res.status(400).json({ error: 'CEP inválido ou não encontrado' });
+  }
+
+  const clienteAtualizado = await prisma.cliente.update({
+    where: { id: parseInt(id) },
+    data: {
+      nome,
+      cpf,
+      telefone,
+      cep,
+      numero,
+      complemento,
+      logradouro: endereco.logradouro,
+      bairro: endereco.bairro,
+      cidade: endereco.localidade,
+      estado: endereco.uf,
+    },
+  });
+  res.json(clienteAtualizado);
+});
+
+// 5. Deletar um cliente
+app.delete('/clientes/:id', async (req, res) => {
+  const { id } = req.params;
+  const clienteDeletado = await prisma.cliente.delete({
+    where: { id: parseInt(id) },
+  });
+  res.json(clienteDeletado);
+});
+
+// Iniciar o servidor
+app.listen(port, () => {
+  console.log(`Servidor rodando na porta ${port}`);
+});
+Passo 3: Como Testar as APIs
+
+Você pode testar as APIs usando ferramentas como Postman ou Insomnia. Abaixo estão exemplos de requisições para cada endpoint:
+
+1. Listar todos os clientes
+
+Método: GET
+URL: http://localhost:3000/clientes
+Corpo: Nenhum.
+2. Listar um cliente específico
+
+Método: GET
+URL: http://localhost:3000/clientes/1 (substitua 1 pelo ID do cliente).
+Corpo: Nenhum.
+3. Criar um novo cliente
+
+Método: POST
+URL: http://localhost:3000/clientes
+Corpo (JSON):
+json
+Copy
+{
+  "nome": "João Silva",
+  "cpf": "123.456.789-00",
+  "telefone": "(11) 99999-9999",
+  "cep": "01001000",
+  "numero": "123",
+  "complemento": "Apto 101"
+}
+4. Atualizar um cliente existente
+
+Método: PUT
+URL: http://localhost:3000/clientes/1 (substitua 1 pelo ID do cliente).
+Corpo (JSON):
+json
+Copy
+{
+  "nome": "João Silva Atualizado",
+  "cpf": "123.456.789-00",
+  "telefone": "(11) 88888-8888",
+  "cep": "01001000",
+  "numero": "456",
+  "complemento": "Apto 202"
+}
+5. Deletar um cliente
+
+Método: DELETE
+URL: http://localhost:3000/clientes/1 (substitua 1 pelo ID do cliente).
+Corpo: Nenhum.
+Passo 4: Coleção do Postman/Insomnia
+
+Aqui está um exemplo de coleção do Postman/Insomnia para testar as APIs:
+
+json
+Copy
+{
+  "info": {
+    "_postman_id": "c0d0b0a0-0b0a-0c0d-0e0f-0a0b0c0d0e0f",
+    "name": "CRUD Clientes API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Listar todos os clientes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/clientes",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["clientes"]
+        }
+      }
+    },
+    {
+      "name": "Listar um cliente específico",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/clientes/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["clientes", "1"]
+        }
+      }
+    },
+    {
+      "name": "Criar um novo cliente",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"João Silva\",\n  \"cpf\": \"123.456.789-00\",\n  \"telefone\": \"(11) 99999-9999\",\n  \"cep\": \"01001000\",\n  \"numero\": \"123\",\n  \"complemento\": \"Apto 101\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/clientes",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["clientes"]
+        }
+      }
+    },
+    {
+      "name": "Atualizar um cliente",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"João Silva Atualizado\",\n  \"cpf\": \"123.456.789-00\",\n  \"telefone\": \"(11) 88888-8888\",\n  \"cep\": \"01001000\",\n  \"numero\": \"456\",\n  \"complemento\": \"Apto 202\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/clientes/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["clientes", "1"]
+        }
+      }
+    },
+    {
+      "name": "Deletar um cliente",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/clientes/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["clientes", "1"]
+        }
+      }
+    }
+  ]
+}
+Salve esse JSON em um arquivo (por exemplo, CRUD_Clientes_API.postman_collection.json) e importe no Postman ou Insomnia.
+
+Passo 5: Executando a API
+
+Inicie o servidor:
+bash
+Copy
+node index.js
+Use o Postman/Insomnia para testar os endpoints conforme descrito acima.
+Pronto! Agora você tem uma API completa para gerenciar clientes, com busca automática de endereço pelo CEP. 🚀
