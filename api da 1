@@ -1,0 +1,253 @@
+
+Aqui está a API completa para o Exercício 1 (CRUD de Produtos) utilizando Express e Prisma. Vou detalhar cada parte do código e como testar os endpoints.
+
+Passo 1: Configuração do Projeto
+
+Inicialize o projeto Node.js:
+bash
+Copy
+mkdir crud-produtos
+cd crud-produtos
+npm init -y
+Instale as dependências necessárias:
+bash
+Copy
+npm install express @prisma/client
+npm install --save-dev prisma
+Inicialize o Prisma:
+bash
+Copy
+npx prisma init
+Isso criará um diretório prisma com um arquivo schema.prisma e um arquivo .env para configurar a conexão com o banco de dados.
+Passo 2: Configuração do Banco de Dados
+
+Configure o arquivo .env:
+Abra o arquivo .env e configure a conexão com o PostgreSQL:
+env
+Copy
+DATABASE_URL="postgresql://SEU_USUARIO:SUA_SENHA@localhost:5432/nome_do_banco"
+Defina o modelo no schema.prisma:
+Abra o arquivo prisma/schema.prisma e defina o modelo Produto:
+prisma
+Copy
+model Produto {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  preco     Float
+  quantidade Int
+}
+Crie e aplique as migrações:
+bash
+Copy
+npx prisma migrate dev --name init
+Passo 3: Criação da API com Express
+
+Crie o arquivo index.js:
+javascript
+Copy
+const express = require('express');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient();
+const app = express();
+const port = 3000;
+
+app.use(express.json());
+
+// 1. Listar todos os produtos
+app.get('/produtos', async (req, res) => {
+  const produtos = await prisma.produto.findMany();
+  res.json(produtos);
+});
+
+// 2. Listar um produto específico por ID
+app.get('/produtos/:id', async (req, res) => {
+  const { id } = req.params;
+  const produto = await prisma.produto.findUnique({
+    where: { id: parseInt(id) },
+  });
+  if (!produto) {
+    return res.status(404).json({ error: 'Produto não encontrado' });
+  }
+  res.json(produto);
+});
+
+// 3. Criar um novo produto
+app.post('/produtos', async (req, res) => {
+  const { nome, preco, quantidade } = req.body;
+  const novoProduto = await prisma.produto.create({
+    data: { nome, preco, quantidade },
+  });
+  res.status(201).json(novoProduto);
+});
+
+// 4. Atualizar um produto existente
+app.put('/produtos/:id', async (req, res) => {
+  const { id } = req.params;
+  const { nome, preco, quantidade } = req.body;
+  const produtoAtualizado = await prisma.produto.update({
+    where: { id: parseInt(id) },
+    data: { nome, preco, quantidade },
+  });
+  res.json(produtoAtualizado);
+});
+
+// 5. Deletar um produto
+app.delete('/produtos/:id', async (req, res) => {
+  const { id } = req.params;
+  const produtoDeletado = await prisma.produto.delete({
+    where: { id: parseInt(id) },
+  });
+  res.json(produtoDeletado);
+});
+
+// Iniciar o servidor
+app.listen(port, () => {
+  console.log(`Servidor rodando na porta ${port}`);
+});
+Passo 4: Como Testar as APIs
+
+Você pode testar as APIs usando ferramentas como Postman ou Insomnia. Abaixo estão exemplos de requisições para cada endpoint:
+
+1. Listar todos os produtos
+
+Método: GET
+URL: http://localhost:3000/produtos
+Corpo: Nenhum.
+2. Listar um produto específico
+
+Método: GET
+URL: http://localhost:3000/produtos/1 (substitua 1 pelo ID do produto).
+Corpo: Nenhum.
+3. Criar um novo produto
+
+Método: POST
+URL: http://localhost:3000/produtos
+Corpo (JSON):
+json
+Copy
+{
+  "nome": "Notebook",
+  "preco": 3500.00,
+  "quantidade": 10
+}
+4. Atualizar um produto existente
+
+Método: PUT
+URL: http://localhost:3000/produtos/1 (substitua 1 pelo ID do produto).
+Corpo (JSON):
+json
+Copy
+{
+  "nome": "Notebook Atualizado",
+  "preco": 4000.00,
+  "quantidade": 5
+}
+5. Deletar um produto
+
+Método: DELETE
+URL: http://localhost:3000/produtos/1 (substitua 1 pelo ID do produto).
+Corpo: Nenhum.
+Passo 5: Coleção do Postman/Insomnia
+
+Aqui está um exemplo de coleção do Postman/Insomnia para testar as APIs:
+
+json
+Copy
+{
+  "info": {
+    "_postman_id": "c0d0b0a0-0b0a-0c0d-0e0f-0a0b0c0d0e0f",
+    "name": "CRUD Produtos API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Listar todos os produtos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/produtos",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["produtos"]
+        }
+      }
+    },
+    {
+      "name": "Listar um produto específico",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/produtos/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["produtos", "1"]
+        }
+      }
+    },
+    {
+      "name": "Criar um novo produto",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Notebook\",\n  \"preco\": 3500.00,\n  \"quantidade\": 10\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/produtos",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["produtos"]
+        }
+      }
+    },
+    {
+      "name": "Atualizar um produto",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nome\": \"Notebook Atualizado\",\n  \"preco\": 4000.00,\n  \"quantidade\": 5\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3000/produtos/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["produtos", "1"]
+        }
+      }
+    },
+    {
+      "name": "Deletar um produto",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:3000/produtos/1",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3000",
+          "path": ["produtos", "1"]
+        }
+      }
+    }
+  ]
+}
+Salve esse JSON em um arquivo (por exemplo, CRUD_Produtos_API.postman_collection.json) e importe no Postman ou Insomnia.
+
+Passo 6: Executando a API
+
+Inicie o servidor:
+bash
+Copy
+node index.js
+Use o Postman/Insomnia para testar os endpoints conforme descrito acima.
+Pronto! Agora você tem uma API completa 
